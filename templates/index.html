@@ -2,125 +2,443 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Chess Bot Code Jam — Live</title>
+<title>⚓ לוחמה רשתית מתשתחמטים</title>
 <link rel="stylesheet"
   href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #1d1f24;
-    --panel: #2a2d35;
-    --text: #f0f0f0;
-    --muted: #9aa0aa;
-    --accent: #ffb347;
-    --strike: #e25555;
-    --good: #6cce7a;
+    --navy-abyss: #050d1c;
+    --navy-deep: #0a1a32;
+    --navy-mid: #112a4a;
+    --navy-light: #1d3a63;
+    --navy-glass: rgba(20, 45, 80, 0.55);
+    --hull: #0e1f3a;
+    --brass: #d4a64a;
+    --brass-bright: #f0c668;
+    --brass-dim: #8a6b29;
+    --rope: #c8a878;
+    --foam: #e6f1ff;
+    --text: #eaf2ff;
+    --muted: #8aa3c4;
+    --strike: #ff6b5a;
+    --good: #5ddf9a;
+    --rivet: rgba(255,255,255,0.08);
   }
   * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
   body {
-    margin: 0;
-    background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     min-height: 100vh;
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(50, 100, 180, 0.18), transparent 60%),
+      radial-gradient(ellipse at 80% 100%, rgba(20, 60, 120, 0.25), transparent 55%),
+      linear-gradient(180deg, var(--navy-abyss) 0%, var(--navy-deep) 50%, #03070f 100%);
+    background-attachment: fixed;
+    overflow-x: hidden;
   }
+
+  /* subtle wave pattern overlay */
+  body::before {
+    content: "";
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      repeating-linear-gradient(180deg,
+        transparent 0px, transparent 80px,
+        rgba(120, 180, 255, 0.025) 80px, rgba(120, 180, 255, 0.025) 81px);
+    pointer-events: none;
+  }
+
   header {
-    padding: 12px 24px;
-    background: var(--panel);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #000;
+    position: relative; z-index: 2;
+    padding: 14px 28px;
+    background: linear-gradient(180deg, rgba(8, 18, 36, 0.95), rgba(8, 18, 36, 0.75));
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--brass-dim);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 16px; flex-wrap: wrap;
   }
-  header h1 { margin: 0; font-size: 20px; letter-spacing: 1px; }
-  .header-controls { display: flex; align-items: center; gap: 18px; font-size: 14px; flex-wrap: wrap; }
-  .delay-control { display: flex; align-items: center; gap: 8px; }
-  .delay-control input { width: 160px; }
+  header h1 {
+    margin: 0; font-family: 'Cinzel', serif;
+    font-size: 22px; letter-spacing: 2px; color: var(--brass-bright);
+    text-shadow: 0 0 12px rgba(212, 166, 74, 0.3);
+    display: flex; align-items: center; gap: 12px;
+  }
+  header h1 .anchor { font-size: 26px; }
+  header h1 small {
+    display: block; font-family: 'Inter', sans-serif; font-weight: 400;
+    font-size: 10px; letter-spacing: 4px; color: var(--rope);
+    margin-top: 2px;
+  }
+  .header-controls { display: flex; align-items: center; gap: 18px; font-size: 13px; flex-wrap: wrap; }
+  .delay-control { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+  .delay-control label { letter-spacing: 1px; text-transform: uppercase; font-size: 11px; }
+  .delay-control input {
+    width: 140px; accent-color: var(--brass);
+  }
+  .delay-control span { color: var(--brass-bright); font-family: ui-monospace, monospace; min-width: 36px; }
+
   .match-control { display: flex; align-items: center; gap: 6px; }
+  .match-control label {
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted); margin-left: 4px;
+  }
   .match-control select {
-    background: #1d1f24; color: var(--text); border: 1px solid #444;
-    border-radius: 4px; padding: 4px 6px; font-size: 13px;
+    background: var(--navy-deep); color: var(--text);
+    border: 1px solid var(--brass-dim);
+    border-radius: 6px; padding: 6px 8px; font-size: 12px;
+    font-family: inherit;
   }
-  .match-control button {
-    background: var(--accent); color: #1d1f24; border: 0;
-    border-radius: 4px; padding: 5px 12px; font-size: 13px; font-weight: 600;
-    cursor: pointer;
+  .match-control select:focus { outline: 1px solid var(--brass); }
+  .btn {
+    background: linear-gradient(180deg, var(--brass-bright), var(--brass));
+    color: var(--navy-abyss); border: 0;
+    border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer; font-family: inherit;
+    box-shadow: 0 2px 0 var(--brass-dim), 0 4px 10px rgba(0,0,0,0.4);
+    transition: transform 0.05s, box-shadow 0.15s;
   }
-  .match-control button.secondary { background: #444; color: var(--text); }
-  .match-control button.danger { background: var(--strike); color: white; }
-  .match-control button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn:hover:not(:disabled) { box-shadow: 0 2px 0 var(--brass-dim), 0 0 14px rgba(240, 198, 104, 0.5); }
+  .btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0 0 var(--brass-dim); }
+  .btn.secondary {
+    background: linear-gradient(180deg, var(--navy-light), var(--navy-mid));
+    color: var(--text); box-shadow: 0 2px 0 #061224, 0 4px 10px rgba(0,0,0,0.4);
+  }
+  .btn.danger {
+    background: linear-gradient(180deg, #ff7d6e, #d44a3a);
+    color: white; box-shadow: 0 2px 0 #6e1c14, 0 4px 10px rgba(0,0,0,0.4);
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   main {
+    position: relative; z-index: 1;
     display: grid;
-    grid-template-columns: 320px 1fr 320px;
-    gap: 16px;
-    padding: 16px 24px;
+    grid-template-columns: 320px 1fr 340px;
+    gap: 18px;
+    padding: 20px 28px 40px;
     align-items: start;
   }
-  .col { display: flex; flex-direction: column; gap: 12px; }
-  .panel {
-    background: var(--panel);
-    border-radius: 8px;
-    padding: 12px 14px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-  }
-  .player {
-    display: flex; flex-direction: column; gap: 6px;
-  }
-  .player .name {
-    font-size: 18px; font-weight: 600; display: flex;
-    justify-content: space-between; align-items: center;
-  }
-  .player .clock { font-family: ui-monospace, Menlo, monospace; font-size: 22px; }
-  .player .strikes { color: var(--strike); letter-spacing: 4px; min-height: 22px; }
-  .captured {
-    min-height: 28px; font-size: 22px; letter-spacing: 2px;
-    color: var(--muted);
-  }
-  .status-bar {
-    text-align: center; font-size: 22px; font-weight: 600;
-    padding: 10px; background: var(--panel); border-radius: 8px;
-  }
-  .status-bar.alert { background: #5a2222; }
-  .status-bar.good { background: #224d2a; }
+  .col { display: flex; flex-direction: column; gap: 14px; }
 
+  .panel {
+    position: relative;
+    background:
+      linear-gradient(180deg, rgba(29, 58, 99, 0.45), rgba(10, 26, 50, 0.6));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(212, 166, 74, 0.25);
+    border-radius: 12px;
+    padding: 14px 16px;
+    box-shadow:
+      0 8px 24px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  /* corner rivets */
+  .panel::before, .panel::after,
+  .panel > .rivet-tl, .panel > .rivet-tr {
+    content: "";
+    position: absolute; width: 6px; height: 6px;
+    background: radial-gradient(circle, var(--brass-bright), var(--brass-dim));
+    border-radius: 50%;
+    box-shadow: inset 0 0 2px rgba(0,0,0,0.6);
+  }
+  .panel::before { top: 6px; left: 6px; }
+  .panel::after  { bottom: 6px; right: 6px; }
+  .panel h3 {
+    margin: 0 0 10px 0; font-family: 'Cinzel', serif;
+    font-size: 12px; text-transform: uppercase;
+    letter-spacing: 3px; color: var(--brass-bright);
+    border-bottom: 1px solid rgba(212, 166, 74, 0.2);
+    padding-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel h3 .icon { font-size: 14px; }
+
+  /* player panel */
+  .player .name {
+    font-size: 16px; font-weight: 600; display: flex;
+    justify-content: space-between; align-items: center;
+    font-family: 'Cinzel', serif; letter-spacing: 1px;
+  }
+  .player .name .rank {
+    font-size: 9px; color: var(--rope); letter-spacing: 2px;
+    text-transform: uppercase; display: block;
+    font-family: 'Inter', sans-serif; font-weight: 500;
+  }
+  .player .clock {
+    font-family: ui-monospace, "Courier New", monospace; font-size: 28px;
+    color: var(--brass-bright); font-weight: 700;
+    text-shadow: 0 0 8px rgba(240, 198, 104, 0.4);
+    background: var(--navy-abyss);
+    padding: 2px 10px; border-radius: 6px;
+    border: 1px solid var(--brass-dim);
+    letter-spacing: 2px;
+  }
+  .player .strikes {
+    color: var(--strike); letter-spacing: 6px; min-height: 22px; font-size: 16px;
+    text-shadow: 0 0 6px rgba(255, 107, 90, 0.6);
+  }
+  .captured {
+    min-height: 32px; font-size: 22px; letter-spacing: 2px;
+    color: var(--foam);
+    padding: 4px 0;
+  }
+  .player .label-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px;
+    color: var(--muted); margin-top: 6px;
+  }
+
+  /* status bar */
+  .status-bar {
+    text-align: center; font-family: 'Cinzel', serif;
+    font-size: 20px; font-weight: 600; letter-spacing: 2px;
+    padding: 14px; border-radius: 12px;
+    background: linear-gradient(180deg, rgba(29, 58, 99, 0.7), rgba(10, 26, 50, 0.7));
+    border: 1px solid rgba(212, 166, 74, 0.3);
+    color: var(--foam);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    position: relative; overflow: hidden;
+  }
+  .status-bar.alert {
+    background: linear-gradient(180deg, rgba(140, 40, 30, 0.7), rgba(80, 18, 14, 0.8));
+    border-color: var(--strike); color: #ffdcd6;
+    animation: pulseAlert 1.2s ease-in-out infinite;
+  }
+  .status-bar.good {
+    background: linear-gradient(180deg, rgba(30, 90, 60, 0.7), rgba(14, 50, 30, 0.85));
+    border-color: var(--good); color: #d8fbe8;
+  }
+  @keyframes pulseAlert {
+    0%, 100% { box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 0 rgba(255,107,90,0); }
+    50%      { box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 22px rgba(255,107,90,0.45); }
+  }
+
+  /* board frame */
+  .board-frame {
+    position: relative;
+    padding: 18px;
+    border-radius: 14px;
+    background:
+      linear-gradient(135deg, #1a2f52, #0b1a32);
+    border: 1px solid var(--brass-dim);
+    box-shadow:
+      0 12px 30px rgba(0,0,0,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  .board-frame::before {
+    content: "";
+    position: absolute; inset: 8px;
+    border: 1px dashed rgba(212, 166, 74, 0.3);
+    border-radius: 8px;
+    pointer-events: none;
+  }
   #board { width: 100%; max-width: 640px; margin: 0 auto; }
 
+  /* override chessboard.js square colors for navy theme */
+  .white-1e1d7 { background-color: #c9d6e8 !important; color: var(--navy-deep) !important; }
+  .black-3c85d { background-color: #1e3a64 !important; color: var(--foam) !important; }
+  .highlight1-32417, .highlight2-9c5d2 { box-shadow: inset 0 0 3px 3px var(--brass) !important; }
+  .notation-322f9 { font-family: 'Cinzel', serif !important; font-weight: 600 !important; }
+
+  /* tabs */
+  .tab-strip {
+    display: flex; gap: 4px; padding: 4px;
+    background: rgba(5, 13, 28, 0.6);
+    border: 1px solid rgba(212, 166, 74, 0.2);
+    border-radius: 10px;
+    margin-bottom: 0;
+  }
+  .tab {
+    flex: 1; text-align: center; padding: 8px 6px;
+    font-family: 'Cinzel', serif; font-size: 11px;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted); cursor: pointer;
+    border-radius: 7px;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    color: var(--navy-abyss);
+    background: linear-gradient(180deg, var(--brass-bright), var(--brass));
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* move history */
   .move-history {
-    max-height: 460px; overflow-y: auto;
-    font-family: ui-monospace, Menlo, monospace; font-size: 14px;
-    display: grid; grid-template-columns: 28px 1fr 1fr; gap: 2px 8px;
+    max-height: 420px; overflow-y: auto;
+    font-family: ui-monospace, "Courier New", monospace; font-size: 13px;
+    display: grid; grid-template-columns: 32px 1fr 1fr; gap: 4px 10px;
+    padding-right: 6px;
   }
-  .move-history .num { color: var(--muted); }
-  .panel h3 {
-    margin: 0 0 8px 0; font-size: 13px; text-transform: uppercase;
-    letter-spacing: 1px; color: var(--muted);
+  .move-history::-webkit-scrollbar { width: 8px; }
+  .move-history::-webkit-scrollbar-track { background: var(--navy-abyss); border-radius: 4px; }
+  .move-history::-webkit-scrollbar-thumb { background: var(--brass-dim); border-radius: 4px; }
+  .move-history .num { color: var(--rope); }
+  .move-history .san {
+    color: var(--foam); padding: 2px 6px;
+    border-radius: 3px;
   }
+  .move-history .san:hover { background: rgba(212, 166, 74, 0.1); }
+
+  /* strike flash */
   .strike-flash {
     position: fixed; top: 30%; left: 50%; transform: translate(-50%, -50%);
-    background: var(--strike); color: white; padding: 24px 48px;
-    border-radius: 12px; font-size: 28px; font-weight: 700;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    background: linear-gradient(180deg, #ff7d6e, #b8321e);
+    color: white; padding: 24px 56px;
+    border: 2px solid var(--brass-bright);
+    border-radius: 16px; font-family: 'Cinzel', serif;
+    font-size: 28px; font-weight: 700; letter-spacing: 3px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.7), 0 0 60px rgba(255,107,90,0.4);
     pointer-events: none;
     opacity: 0; transition: opacity 0.3s;
+    z-index: 100;
   }
   .strike-flash.show { opacity: 1; }
+
+  /* missile boat sticker */
+  .boat-sticker {
+    position: absolute;
+    pointer-events: none;
+    opacity: 0.85;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  }
+  .boat-sticker .label {
+    font-family: 'Cinzel', serif;
+    font-size: 8px; letter-spacing: 2px;
+    fill: var(--brass-bright);
+    text-transform: uppercase;
+    text-anchor: middle;
+  }
+  .boat-sticker .hull-stroke { stroke: var(--brass-dim); stroke-width: 0.8; fill: var(--hull); }
+  .boat-sticker .deck { fill: #1a3258; }
+  .boat-sticker .cabin { fill: #2a4a78; stroke: var(--brass-dim); stroke-width: 0.5; }
+  .boat-sticker .missile { fill: #d6d6d6; stroke: #555; stroke-width: 0.4; }
+  .boat-sticker .missile-tip { fill: var(--strike); }
+  .boat-sticker .mast { stroke: var(--brass); stroke-width: 0.8; }
+  .boat-sticker .flag { fill: var(--strike); }
+  .boat-sticker .water {
+    fill: none; stroke: rgba(140, 200, 255, 0.5);
+    stroke-width: 0.8; stroke-linecap: round;
+  }
+
+  .boat-corner-tl { top: 70px; left: 8px; width: 130px; transform: rotate(-8deg); }
+  .boat-corner-tr { top: 70px; right: 8px; width: 130px; transform: rotate(8deg) scaleX(-1); }
+  .boat-inline { width: 100%; height: auto; margin-top: 6px; }
+
+  /* compass watermark behind board */
+  .compass-bg {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    pointer-events: none; opacity: 0.04;
+    z-index: 0;
+  }
+  .compass-bg svg { width: 80%; height: 80%; }
+  .board-frame > #board { position: relative; z-index: 1; }
+
+  /* responsive */
+  @media (max-width: 1100px) {
+    main { grid-template-columns: 1fr; }
+    .boat-corner-tl, .boat-corner-tr { display: none; }
+  }
+
+  /* footer joke */
+  .deck-footer {
+    text-align: center; font-family: 'Cinzel', serif;
+    font-size: 10px; letter-spacing: 4px; color: var(--rope);
+    padding: 10px; opacity: 0.7;
+    position: relative; z-index: 1;
+  }
 </style>
 </head>
 <body>
+
+<!-- Reusable missile boat SVG (referenced via <use>) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="missile-boat" viewBox="0 0 120 60">
+      <!-- water -->
+      <path class="water" d="M 2 50 Q 12 47 22 50 T 42 50 T 62 50 T 82 50 T 102 50 T 118 50" />
+      <path class="water" d="M 6 55 Q 16 52 26 55 T 46 55 T 66 55 T 86 55 T 106 55 T 118 55" />
+      <!-- hull -->
+      <path class="hull-stroke" d="M 12 42 L 108 42 L 100 50 L 20 50 Z" />
+      <!-- deck -->
+      <rect class="deck" x="22" y="38" width="76" height="5" />
+      <!-- cabin / bridge -->
+      <path class="cabin" d="M 48 28 L 78 28 L 82 38 L 44 38 Z" />
+      <rect class="cabin" x="52" y="22" width="22" height="7" />
+      <!-- windows -->
+      <rect x="54" y="24" width="4" height="3" fill="#9ad4ff" />
+      <rect x="60" y="24" width="4" height="3" fill="#9ad4ff" />
+      <rect x="66" y="24" width="4" height="3" fill="#9ad4ff" />
+      <!-- mast -->
+      <line class="mast" x1="63" y1="22" x2="63" y2="6" />
+      <path class="flag" d="M 63 6 L 75 9 L 63 12 Z" />
+      <!-- missile launchers (front) -->
+      <g>
+        <rect class="missile" x="28" y="33" width="14" height="3" rx="1" />
+        <polygon class="missile-tip" points="42,33 46,34.5 42,36" />
+        <rect class="missile" x="28" y="29" width="14" height="3" rx="1" />
+        <polygon class="missile-tip" points="42,29 46,30.5 42,32" />
+      </g>
+      <!-- missile launchers (rear) -->
+      <g transform="translate(50, 0)">
+        <rect class="missile" x="28" y="33" width="14" height="3" rx="1" />
+        <polygon class="missile-tip" points="42,33 46,34.5 42,36" />
+        <rect class="missile" x="28" y="29" width="14" height="3" rx="1" />
+        <polygon class="missile-tip" points="42,29 46,30.5 42,32" />
+      </g>
+      <!-- label -->
+      <text class="label" x="60" y="58">For Roytman</text>
+    </symbol>
+
+    <symbol id="compass" viewBox="0 0 200 200">
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#d4a64a" stroke-width="2" />
+      <circle cx="100" cy="100" r="70" fill="none" stroke="#d4a64a" stroke-width="1" />
+      <g stroke="#d4a64a" stroke-width="1">
+        <line x1="100" y1="10" x2="100" y2="30" />
+        <line x1="100" y1="170" x2="100" y2="190" />
+        <line x1="10" y1="100" x2="30" y2="100" />
+        <line x1="170" y1="100" x2="190" y2="100" />
+      </g>
+      <polygon points="100,30 110,100 100,170 90,100" fill="#d4a64a" opacity="0.6" />
+      <polygon points="30,100 100,90 170,100 100,110" fill="#d4a64a" opacity="0.3" />
+      <text x="100" y="22" text-anchor="middle" fill="#d4a64a" font-family="Cinzel,serif" font-size="14" font-weight="700">N</text>
+      <text x="100" y="184" text-anchor="middle" fill="#d4a64a" font-family="Cinzel,serif" font-size="14" font-weight="700">S</text>
+      <text x="22" y="105" text-anchor="middle" fill="#d4a64a" font-family="Cinzel,serif" font-size="14" font-weight="700">W</text>
+      <text x="178" y="105" text-anchor="middle" fill="#d4a64a" font-family="Cinzel,serif" font-size="14" font-weight="700">E</text>
+    </symbol>
+  </defs>
+</svg>
+
 <header>
-  <h1>♟ Chess Bot Code Jam — Live</h1>
+  <h1>
+    <span class="anchor">⚓</span>
+    <span>
+      לוחמה שחמטית
+      <small>אח"י דוקר · ALL HANDS ON DECK</small>
+    </span>
+  </h1>
   <div class="header-controls">
     <div class="match-control">
-      <label for="whiteBot">White</label>
+      <label for="whiteBot">⛵ White</label>
       <select id="whiteBot"></select>
-      <label for="blackBot">Black</label>
+      <label for="blackBot">🚢 Black</label>
       <select id="blackBot"></select>
-      <button id="playBtn">▶ Play</button>
-      <button id="stopBtn" class="danger" disabled>■ Stop</button>
-      <button id="resetBtn" class="secondary">Reset</button>
+      <button id="playBtn" class="btn">▶ Set Sail</button>
+      <button id="stopBtn" class="btn danger" disabled>■ Abandon Ship</button>
+      <button id="resetBtn" class="btn secondary">↻ Drop Anchor</button>
     </div>
     <div class="delay-control">
-      <label for="delay">Move delay</label>
+      <label for="delay">⏱ Tide</label>
       <input id="delay" type="range" min="0" max="3" step="0.1" value="1.0" />
       <span id="delayLabel">1.0s</span>
     </div>
@@ -128,33 +446,107 @@
 </header>
 
 <main>
+  <!-- LEFT COLUMN: Captains -->
   <div class="col">
     <div class="panel player" id="blackPanel">
-      <div class="name"><span id="blackName">Black</span><span class="clock" id="blackClock">10:00</span></div>
-      <div class="strikes" id="blackStrikes"></div>
-      <div class="captured" id="blackCaptured"></div>
+      <svg class="boat-sticker boat-corner-tl"><use href="#missile-boat" /></svg>
+      <h3><span class="icon">🏴‍☠️</span> Black Captain</h3>
+      <div class="name">
+        <span>
+          <span id="blackName">Black</span>
+          <span class="rank">Commander</span>
+        </span>
+        <span class="clock" id="blackClock">10:00</span>
+      </div>
+      <div class="label-row"><span>Strikes</span><span>Bounty</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="strikes" id="blackStrikes"></div>
+        <div class="captured" id="blackCaptured"></div>
+      </div>
     </div>
+
     <div class="panel player" id="whitePanel">
-      <div class="name"><span id="whiteName">White</span><span class="clock" id="whiteClock">10:00</span></div>
-      <div class="strikes" id="whiteStrikes"></div>
-      <div class="captured" id="whiteCaptured"></div>
+      <h3><span class="icon">⚓</span> White Captain</h3>
+      <div class="name">
+        <span>
+          <span id="whiteName">White</span>
+          <span class="rank">Commander</span>
+        </span>
+        <span class="clock" id="whiteClock">10:00</span>
+      </div>
+      <div class="label-row"><span>Strikes</span><span>Bounty</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="strikes" id="whiteStrikes"></div>
+        <div class="captured" id="whiteCaptured"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="text-align:center;">
+      <h3><span class="icon">🚀</span> Fleet Mascot</h3>
+      <svg class="boat-inline" viewBox="0 0 120 60"><use href="#missile-boat" /></svg>
+      <div style="font-size:10px;color:var(--rope);letter-spacing:2px;margin-top:4px;">
+        DEPLOYED IN HONOR OF
+      </div>
+      <div style="font-family:'Cinzel',serif;color:var(--brass-bright);letter-spacing:3px;font-size:14px;margin-top:2px;">
+        ROYTMAN
+      </div>
     </div>
   </div>
 
+  <!-- CENTER COLUMN: Board -->
   <div class="col">
-    <div class="status-bar" id="status">Waiting for game…</div>
-    <div id="board"></div>
+    <div class="status-bar" id="status">⚓ Awaiting orders from the bridge…</div>
+    <div class="board-frame">
+      <svg class="boat-sticker boat-corner-tr"><use href="#missile-boat" /></svg>
+      <div class="compass-bg"><svg><use href="#compass" /></svg></div>
+      <div id="board"></div>
+    </div>
   </div>
 
+  <!-- RIGHT COLUMN: Logbook tabs -->
   <div class="col">
+    <div class="tab-strip">
+      <div class="tab active" data-tab="logbook">📜 Logbook</div>
+      <div class="tab" data-tab="orders">🧭 Orders</div>
+      <div class="tab" data-tab="fleet">🚢 Fleet</div>
+    </div>
+
     <div class="panel">
-      <h3>Move History</h3>
-      <div class="move-history" id="history"></div>
+      <div class="tab-panel active" id="tab-logbook">
+        <h3><span class="icon">📜</span> Ship's Logbook</h3>
+        <div class="move-history" id="history"></div>
+      </div>
+
+      <div class="tab-panel" id="tab-orders">
+        <h3><span class="icon">🧭</span> Standing Orders</h3>
+        <ul style="margin:0;padding-left:18px;line-height:1.7;font-size:13px;color:var(--foam);">
+          <li>3 strikes &mdash; ye walk the plank.</li>
+          <li>3 seconds per move. The tide waits for no bot.</li>
+          <li>Adjust the <em>tide</em> slider to slow the action for the audience.</li>
+          <li>Strikes are awarded for crashes &amp; timeouts.</li>
+          <li>Captains may not import contraband (<code>numpy</code>, <code>requests</code>, etc.).</li>
+        </ul>
+      </div>
+
+      <div class="tab-panel" id="tab-fleet">
+        <h3><span class="icon">🚢</span> Fleet Status</h3>
+        <div style="text-align:center;">
+          <svg class="boat-inline" viewBox="0 0 120 60"><use href="#missile-boat" /></svg>
+          <svg class="boat-inline" viewBox="0 0 120 60" style="transform:scaleX(-1);"><use href="#missile-boat" /></svg>
+        </div>
+        <div style="text-align:center;font-size:11px;letter-spacing:2px;color:var(--rope);margin-top:8px;">
+          ⚓ HMS ROYTMAN &middot; MISSILE BOAT DIVISION ⚓
+        </div>
+      </div>
     </div>
   </div>
 </main>
 
-<div class="strike-flash" id="strikeFlash">⚠️ STRIKE</div>
+<div class="deck-footer">
+  ⚓ ⛵ 🧭 &nbsp; AN AARON-WORTHY VESSEL OF NUTS &nbsp; 🧭 ⛵ ⚓
+</div>
+
+<div class="strike-flash" id="strikeFlash">⚠ MAN OVERBOARD ⚠</div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
@@ -174,6 +566,16 @@
     snapbackSpeed: 200,
   });
   window.addEventListener("resize", () => board.resize());
+
+  // Tabs
+  document.querySelectorAll(".tab").forEach(t => {
+    t.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach(x => x.classList.remove("active"));
+      t.classList.add("active");
+      document.getElementById("tab-" + t.dataset.tab).classList.add("active");
+    });
+  });
 
   function fmtClock(s) {
     s = Math.max(0, s);
@@ -212,7 +614,7 @@
   }
   function flashStrike(side, reason) {
     const f = document.getElementById("strikeFlash");
-    f.textContent = `⚠️ STRIKE on ${side.toUpperCase()} — ${reason || ""}`;
+    f.textContent = `⚠ ${side.toUpperCase()} STRUCK — ${reason || "MAN OVERBOARD"} ⚠`;
     f.classList.add("show");
     setTimeout(() => f.classList.remove("show"), 1800);
   }
@@ -250,8 +652,6 @@
   }
 
   const socket = io();
-
-  socket.on("state", applyState);
 
   socket.on("game_start", (s) => {
     clearHistory();
@@ -356,11 +756,8 @@
   });
 
   socket.on("control_state", (s) => setRunning(!!s.running));
-  // Initial state may include running too
-  const origApply = applyState;
-  socket.off("state", origApply);
   socket.on("state", (s) => {
-    origApply(s);
+    applyState(s);
     if (s && typeof s.running === "boolean") setRunning(s.running);
   });
 </script>
