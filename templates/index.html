@@ -350,6 +350,39 @@
     .boat-corner-tl, .boat-corner-tr { display: none; }
   }
 
+  /* peanut stickers — floating, bouncing */
+  .peanut-float {
+    position: fixed; width: 60px; pointer-events: none;
+    z-index: 3;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6));
+    animation: bobNut 4s ease-in-out infinite;
+  }
+  .peanut-float.tl { top: 96px; left: 12px; transform: rotate(-14deg); animation-delay: -1s; }
+  .peanut-float.br { bottom: 60px; right: 14px; transform: rotate(12deg); animation-delay: -2.4s; }
+  @keyframes bobNut {
+    0%, 100% { translate: 0 0; }
+    50%      { translate: 0 -10px; }
+  }
+  .nut-inline { width: 64px; height: auto; vertical-align: middle; }
+  .nut-banner {
+    background: linear-gradient(90deg, rgba(217, 168, 90, 0.15), rgba(217, 168, 90, 0.04));
+    border: 1px dashed #d9a85a;
+    border-radius: 10px;
+    padding: 10px 12px;
+    text-align: center;
+    font-family: 'Cinzel', serif; letter-spacing: 2px;
+    font-size: 11px; color: #f0c668;
+  }
+  .nut-counter {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(217, 168, 90, 0.15);
+    border: 1px solid #d9a85a;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-family: ui-monospace, monospace; font-size: 14px;
+    color: #f0c668;
+  }
+
   /* footer joke */
   .deck-footer {
     text-align: center; font-family: 'Cinzel', serif;
@@ -400,6 +433,46 @@
       <text class="label" x="60" y="58">For Roytman</text>
     </symbol>
 
+    <!-- Peanut mascot: shell with eyes, optional sailor hat -->
+    <symbol id="peanut" viewBox="0 0 80 110">
+      <!-- shell outline (figure-8) -->
+      <path d="M 40 8
+               C 18 8, 10 28, 22 42
+               C 30 52, 30 58, 22 68
+               C 10 82, 18 102, 40 102
+               C 62 102, 70 82, 58 68
+               C 50 58, 50 52, 58 42
+               C 70 28, 62 8, 40 8 Z"
+            fill="#d9a85a" stroke="#6b4a1f" stroke-width="2"/>
+      <!-- shell texture dots -->
+      <g fill="#a87a3a" opacity="0.6">
+        <circle cx="28" cy="22" r="1.6"/>
+        <circle cx="50" cy="20" r="1.6"/>
+        <circle cx="36" cy="32" r="1.6"/>
+        <circle cx="26" cy="80" r="1.6"/>
+        <circle cx="52" cy="86" r="1.6"/>
+        <circle cx="42" cy="74" r="1.6"/>
+        <circle cx="48" cy="94" r="1.6"/>
+        <circle cx="32" cy="60" r="1.4"/>
+        <circle cx="48" cy="56" r="1.4"/>
+      </g>
+      <!-- pinch lines in the middle -->
+      <path d="M 24 50 Q 40 56 56 50" fill="none" stroke="#6b4a1f" stroke-width="1.4"/>
+      <path d="M 24 60 Q 40 54 56 60" fill="none" stroke="#6b4a1f" stroke-width="1.4"/>
+      <!-- sailor hat -->
+      <ellipse cx="40" cy="14" rx="22" ry="4" fill="#f4f7fb" stroke="#1d3a63" stroke-width="1"/>
+      <path d="M 24 14 Q 40 0 56 14 Z" fill="#f4f7fb" stroke="#1d3a63" stroke-width="1"/>
+      <rect x="36" y="6" width="8" height="4" fill="#1d3a63"/>
+      <!-- eyes -->
+      <circle cx="32" cy="78" r="3.2" fill="#fff" stroke="#1a1a1a" stroke-width="0.8"/>
+      <circle cx="48" cy="78" r="3.2" fill="#fff" stroke="#1a1a1a" stroke-width="0.8"/>
+      <circle cx="33" cy="79" r="1.4" fill="#1a1a1a"/>
+      <circle cx="49" cy="79" r="1.4" fill="#1a1a1a"/>
+      <!-- crazy mouth -->
+      <path d="M 33 88 Q 40 96 47 88" fill="none" stroke="#6b1f1f" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="40" cy="92" r="1.4" fill="#ff6b5a"/>
+    </symbol>
+
     <symbol id="compass" viewBox="0 0 200 200">
       <circle cx="100" cy="100" r="90" fill="none" stroke="#d4a64a" stroke-width="2" />
       <circle cx="100" cy="100" r="70" fill="none" stroke="#d4a64a" stroke-width="1" />
@@ -438,7 +511,7 @@
       <button id="resetBtn" class="btn secondary">↻ Drop Anchor</button>
     </div>
     <div class="delay-control">
-      <label for="delay">⏱ Tide</label>
+      <label for="delay">⏱ Tide 🥜</label>
       <input id="delay" type="range" min="0" max="3" step="0.1" value="1.0" />
       <span id="delayLabel">1.0s</span>
     </div>
@@ -458,7 +531,7 @@
         </span>
         <span class="clock" id="blackClock">10:00</span>
       </div>
-      <div class="label-row"><span>Strikes</span><span>Bounty</span></div>
+      <div class="label-row"><span>Strikes ⚠</span><span>🥜 Nuts Collected</span></div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div class="strikes" id="blackStrikes"></div>
         <div class="captured" id="blackCaptured"></div>
@@ -474,7 +547,7 @@
         </span>
         <span class="clock" id="whiteClock">10:00</span>
       </div>
-      <div class="label-row"><span>Strikes</span><span>Bounty</span></div>
+      <div class="label-row"><span>Strikes ⚠</span><span>🥜 Nuts Collected</span></div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div class="strikes" id="whiteStrikes"></div>
         <div class="captured" id="whiteCaptured"></div>
@@ -491,11 +564,12 @@
         ROYTMAN
       </div>
     </div>
+
   </div>
 
   <!-- CENTER COLUMN: Board -->
   <div class="col">
-    <div class="status-bar" id="status">⚓ Awaiting orders from the bridge…</div>
+    <div class="status-bar" id="status">⚓ Awaiting orders from the bridge… 🥜 (squirrels still buffering)</div>
     <div class="board-frame">
       <svg class="boat-sticker boat-corner-tr"><use href="#missile-boat" /></svg>
       <div class="compass-bg"><svg><use href="#compass" /></svg></div>
@@ -509,6 +583,7 @@
       <div class="tab active" data-tab="logbook">📜 Logbook</div>
       <div class="tab" data-tab="orders">🧭 Orders</div>
       <div class="tab" data-tab="fleet">🚢 Fleet</div>
+      <div class="tab" data-tab="nuts">🥜 Stash</div>
     </div>
 
     <div class="panel">
@@ -520,12 +595,34 @@
       <div class="tab-panel" id="tab-orders">
         <h3><span class="icon">🧭</span> Standing Orders</h3>
         <ul style="margin:0;padding-left:18px;line-height:1.7;font-size:13px;color:var(--foam);">
-          <li>3 strikes &mdash; ye walk the plank.</li>
-          <li>3 seconds per move. The tide waits for no bot.</li>
-          <li>Adjust the <em>tide</em> slider to slow the action for the audience.</li>
-          <li>Strikes are awarded for crashes &amp; timeouts.</li>
-          <li>Captains may not import contraband (<code>numpy</code>, <code>requests</code>, etc.).</li>
+          <li>3 strikes &mdash; ye walk the plank. 🥜</li>
+          <li>3 seconds per move. The tide (and the squirrels) wait for no bot.</li>
+          <li>Adjust the <em>tide</em> slider to slow the action for the peanut gallery.</li>
+          <li>Strikes are awarded for crashes, timeouts, and being generally <em>nuts</em>.</li>
+          <li>Captains may not import contraband (<code>numpy</code>, <code>requests</code>, salted snacks).</li>
+          <li>First Mate Peanut watches. Always. 👀</li>
         </ul>
+      </div>
+
+      <div class="tab-panel" id="tab-nuts">
+        <h3><span class="icon">🥜</span> The Nut Stash</h3>
+        <div style="text-align:center;display:flex;justify-content:space-around;align-items:end;margin:8px 0;">
+          <svg class="nut-inline" viewBox="0 0 80 110" style="transform:rotate(-12deg);"><use href="#peanut" /></svg>
+          <svg class="nut-inline" viewBox="0 0 80 110" style="width:80px;"><use href="#peanut" /></svg>
+          <svg class="nut-inline" viewBox="0 0 80 110" style="transform:rotate(15deg);"><use href="#peanut" /></svg>
+        </div>
+        <div class="nut-banner" style="margin-top:6px;">
+          ⚠ DRIVING THIS SHIP NUTS ⚠ 
+        </div>
+        <ul style="margin:10px 0 0;padding-left:18px;font-size:12px;line-height:1.7;color:var(--foam);">
+          <li>🥜 <b>Peanut</b> &mdash; classic shell, classic energy.</li>
+          <li>🌰 <b>Chestnut</b> &mdash; takes too long to crack. Like minimax.</li>
+          <li>🥥 <b>Coconut</b> &mdash; technically a drupe. Don't @ us.</li>
+          <li>🤪 <b>Player</b> &mdash; for putting all this on the projector.</li>
+        </ul>
+        <div style="text-align:center;font-size:10px;letter-spacing:2px;color:var(--rope);margin-top:10px;">
+          ⚓ POWERED BY UNSALTED FURY ⚓
+        </div>
       </div>
 
       <div class="tab-panel" id="tab-fleet">
@@ -543,10 +640,10 @@
 </main>
 
 <div class="deck-footer">
-  ⚓ ⛵ 🧭 &nbsp; AN AARON-WORTHY VESSEL OF NUTS &nbsp; 🧭 ⛵ ⚓
+  ⚓ ⛵ 🧭 🥜 &nbsp; AN AARON-WORTHY VESSEL OF NUTS &nbsp; — &nbsp; SHELL SHOCKED &amp; SEAWORTHY &nbsp; 🥜 🧭 ⛵ ⚓
 </div>
 
-<div class="strike-flash" id="strikeFlash">⚠ MAN OVERBOARD ⚠</div>
+<div class="strike-flash" id="strikeFlash">⚠ GOING NUTS — MAN OVERBOARD ⚠ 🥜</div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
@@ -614,7 +711,9 @@
   }
   function flashStrike(side, reason) {
     const f = document.getElementById("strikeFlash");
-    f.textContent = `⚠ ${side.toUpperCase()} STRUCK — ${reason || "MAN OVERBOARD"} ⚠`;
+    const nutty = ["GOING NUTS", "ABSOLUTELY UNHINGED", "SHELL SHOCKED", "CRACKED"];
+    const tag = nutty[Math.floor(Math.random() * nutty.length)];
+    f.textContent = `⚠🥜 ${side.toUpperCase()} ${tag} — ${reason || "MAN OVERBOARD"} 🥜⚠`;
     f.classList.add("show");
     setTimeout(() => f.classList.remove("show"), 1800);
   }
