@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>⚓ לוחמה רשתית מתשתחמטים</title>
+<title>⚓ לוחמה שחמטית · All Hands on Deck</title>
 <link rel="stylesheet"
   href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -318,9 +318,9 @@
     text-transform: uppercase;
     text-anchor: middle;
   }
-  .boat-sticker .hull-stroke { stroke: var(--brass-dim); stroke-width: 0.8; fill: var(--hull); }
-  .boat-sticker .deck { fill: #1a3258; }
-  .boat-sticker .cabin { fill: #2a4a78; stroke: var(--brass-dim); stroke-width: 0.5; }
+  .boat-sticker .hull-stroke { stroke: var(--brass); stroke-width: 0.8; fill: #24426e; }
+  .boat-sticker .deck { fill: #3d6499; }
+  .boat-sticker .cabin { fill: #4f78ad; stroke: var(--brass); stroke-width: 0.5; }
   .boat-sticker .missile { fill: #d6d6d6; stroke: #555; stroke-width: 0.4; }
   .boat-sticker .missile-tip { fill: var(--strike); }
   .boat-sticker .mast { stroke: var(--brass); stroke-width: 0.8; }
@@ -496,7 +496,7 @@
   <h1>
     <span class="anchor">⚓</span>
     <span>
-      לוחמה שחמטית
+      לוחמה רשתית משתחמטים
       <small>אח"י דוקר · ALL HANDS ON DECK</small>
     </span>
   </h1>
@@ -522,7 +522,6 @@
   <!-- LEFT COLUMN: Captains -->
   <div class="col">
     <div class="panel player" id="blackPanel">
-      <svg class="boat-sticker boat-corner-tl"><use href="#missile-boat" /></svg>
       <h3><span class="icon">🏴‍☠️</span> Black Captain</h3>
       <div class="name">
         <span>
@@ -571,7 +570,6 @@
   <div class="col">
     <div class="status-bar" id="status">⚓ Awaiting orders from the bridge… 🥜 (squirrels still buffering)</div>
     <div class="board-frame">
-      <svg class="boat-sticker boat-corner-tr"><use href="#missile-boat" /></svg>
       <div class="compass-bg"><svg><use href="#compass" /></svg></div>
       <div id="board"></div>
     </div>
