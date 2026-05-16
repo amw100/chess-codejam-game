@@ -1,0 +1,8 @@
+python-chess>=1.10
+flask>=3.0
+flask-socketio>=5.3
+simple-websocket>=1.0
+# Note: eventlet was originally in this list per spec, but was dropped after
+# benchmarking — Flask-SocketIO's threading mode is faster on Windows and
+# is no longer flagged as deprecated. Bots are still sandboxed to stdlib +
+# python-chess (nothing else above is useful for chess logic).

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Chess Bot Code Jam — Live</title>
+<link rel="stylesheet"
+  href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
+<style>
+  :root {
+    --bg: #1d1f24;
+    --panel: #2a2d35;
+    --text: #f0f0f0;
+    --muted: #9aa0aa;
+    --accent: #ffb347;
+    --strike: #e25555;
+    --good: #6cce7a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    padding: 12px 24px;
+    background: var(--panel);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #000;
+  }
+  header h1 { margin: 0; font-size: 20px; letter-spacing: 1px; }
+  .header-controls { display: flex; align-items: center; gap: 18px; font-size: 14px; flex-wrap: wrap; }
+  .delay-control { display: flex; align-items: center; gap: 8px; }
+  .delay-control input { width: 160px; }
+  .match-control { display: flex; align-items: center; gap: 6px; }
+  .match-control select {
+    background: #1d1f24; color: var(--text); border: 1px solid #444;
+    border-radius: 4px; padding: 4px 6px; font-size: 13px;
+  }
+  .match-control button {
+    background: var(--accent); color: #1d1f24; border: 0;
+    border-radius: 4px; padding: 5px 12px; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+  }
+  .match-control button.secondary { background: #444; color: var(--text); }
+  .match-control button.danger { background: var(--strike); color: white; }
+  .match-control button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  main {
+    display: grid;
+    grid-template-columns: 320px 1fr 320px;
+    gap: 16px;
+    padding: 16px 24px;
+    align-items: start;
+  }
+  .col { display: flex; flex-direction: column; gap: 12px; }
+  .panel {
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 12px 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+  .player {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .player .name {
+    font-size: 18px; font-weight: 600; display: flex;
+    justify-content: space-between; align-items: center;
+  }
+  .player .clock { font-family: ui-monospace, Menlo, monospace; font-size: 22px; }
+  .player .strikes { color: var(--strike); letter-spacing: 4px; min-height: 22px; }
+  .captured {
+    min-height: 28px; font-size: 22px; letter-spacing: 2px;
+    color: var(--muted);
+  }
+  .status-bar {
+    text-align: center; font-size: 22px; font-weight: 600;
+    padding: 10px; background: var(--panel); border-radius: 8px;
+  }
+  .status-bar.alert { background: #5a2222; }
+  .status-bar.good { background: #224d2a; }
+
+  #board { width: 100%; max-width: 640px; margin: 0 auto; }
+
+  .move-history {
+    max-height: 460px; overflow-y: auto;
+    font-family: ui-monospace, Menlo, monospace; font-size: 14px;
+    display: grid; grid-template-columns: 28px 1fr 1fr; gap: 2px 8px;
+  }
+  .move-history .num { color: var(--muted); }
+  .panel h3 {
+    margin: 0 0 8px 0; font-size: 13px; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--muted);
+  }
+  .strike-flash {
+    position: fixed; top: 30%; left: 50%; transform: translate(-50%, -50%);
+    background: var(--strike); color: white; padding: 24px 48px;
+    border-radius: 12px; font-size: 28px; font-weight: 700;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    pointer-events: none;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .strike-flash.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>♟ Chess Bot Code Jam — Live</h1>
+  <div class="header-controls">
+    <div class="match-control">
+      <label for="whiteBot">White</label>
+      <select id="whiteBot"></select>
+      <label for="blackBot">Black</label>
+      <select id="blackBot"></select>
+      <button id="playBtn">▶ Play</button>
+      <button id="stopBtn" class="danger" disabled>■ Stop</button>
+      <button id="resetBtn" class="secondary">Reset</button>
+    </div>
+    <div class="delay-control">
+      <label for="delay">Move delay</label>
+      <input id="delay" type="range" min="0" max="3" step="0.1" value="1.0" />
+      <span id="delayLabel">1.0s</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="col">
+    <div class="panel player" id="blackPanel">
+      <div class="name"><span id="blackName">Black</span><span class="clock" id="blackClock">10:00</span></div>
+      <div class="strikes" id="blackStrikes"></div>
+      <div class="captured" id="blackCaptured"></div>
+    </div>
+    <div class="panel player" id="whitePanel">
+      <div class="name"><span id="whiteName">White</span><span class="clock" id="whiteClock">10:00</span></div>
+      <div class="strikes" id="whiteStrikes"></div>
+      <div class="captured" id="whiteCaptured"></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="status-bar" id="status">Waiting for game…</div>
+    <div id="board"></div>
+  </div>
+
+  <div class="col">
+    <div class="panel">
+      <h3>Move History</h3>
+      <div class="move-history" id="history"></div>
+    </div>
+  </div>
+</main>
+
+<div class="strike-flash" id="strikeFlash">⚠️ STRIKE</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<script>
+  const PIECE_GLYPHS = {
+    P: "♙", N: "♘", B: "♗", R: "♖", Q: "♕", K: "♔",
+    p: "♟", n: "♞", b: "♝", r: "♜", q: "♛", k: "♚",
+  };
+
+  const board = Chessboard("board", {
+    position: "start",
+    pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+    showNotation: true,
+    moveSpeed: 250,
+    snapbackSpeed: 200,
+  });
+  window.addEventListener("resize", () => board.resize());
+
+  function fmtClock(s) {
+    s = Math.max(0, s);
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  }
+  function setStrikes(el, n) { el.textContent = "⚠".repeat(n); }
+  function setCaptured(el, symbols) {
+    el.textContent = (symbols || []).map(s => PIECE_GLYPHS[s] || s).join(" ");
+  }
+  function appendHistory(san) {
+    const hist = document.getElementById("history");
+    const ply = hist.querySelectorAll(".san").length;
+    if (ply % 2 === 0) {
+      const num = document.createElement("div");
+      num.className = "num";
+      num.textContent = (ply / 2 + 1) + ".";
+      hist.appendChild(num);
+    }
+    const cell = document.createElement("div");
+    cell.className = "san";
+    cell.textContent = san;
+    hist.appendChild(cell);
+    hist.scrollTop = hist.scrollHeight;
+  }
+  function clearHistory() {
+    document.getElementById("history").innerHTML = "";
+  }
+  function setStatus(text, kind) {
+    const el = document.getElementById("status");
+    el.textContent = text;
+    el.classList.remove("alert", "good");
+    if (kind === "alert") el.classList.add("alert");
+    if (kind === "good") el.classList.add("good");
+  }
+  function flashStrike(side, reason) {
+    const f = document.getElementById("strikeFlash");
+    f.textContent = `⚠️ STRIKE on ${side.toUpperCase()} — ${reason || ""}`;
+    f.classList.add("show");
+    setTimeout(() => f.classList.remove("show"), 1800);
+  }
+
+  function applyState(s) {
+    if (!s) return;
+    if (s.fen) board.position(s.fen);
+    if (s.white_name) document.getElementById("whiteName").textContent = s.white_name;
+    if (s.black_name) document.getElementById("blackName").textContent = s.black_name;
+    if (s.clocks) {
+      document.getElementById("whiteClock").textContent = fmtClock(s.clocks.white);
+      document.getElementById("blackClock").textContent = fmtClock(s.clocks.black);
+    }
+    if (s.strikes) {
+      setStrikes(document.getElementById("whiteStrikes"), s.strikes.white);
+      setStrikes(document.getElementById("blackStrikes"), s.strikes.black);
+    }
+    if (s.captured) {
+      setCaptured(document.getElementById("whiteCaptured"), s.captured.white);
+      setCaptured(document.getElementById("blackCaptured"), s.captured.black);
+    }
+    if (s.status) {
+      const kind = /forfeit|checkmate|wins/i.test(s.status) ? "good"
+                 : /strike|check!/i.test(s.status) ? "alert" : null;
+      setStatus(s.status, kind);
+    }
+    if (s.history_san) {
+      clearHistory();
+      s.history_san.forEach(appendHistory);
+    }
+    if (typeof s.delay === "number") {
+      document.getElementById("delay").value = s.delay;
+      document.getElementById("delayLabel").textContent = s.delay.toFixed(1) + "s";
+    }
+  }
+
+  const socket = io();
+
+  socket.on("state", applyState);
+
+  socket.on("game_start", (s) => {
+    clearHistory();
+    applyState(s);
+  });
+
+  socket.on("move", (data) => {
+    if (data.fen) board.position(data.fen);
+    if (data.san) appendHistory(data.san);
+    if (data.clocks) {
+      document.getElementById("whiteClock").textContent = fmtClock(data.clocks.white);
+      document.getElementById("blackClock").textContent = fmtClock(data.clocks.black);
+    }
+    if (data.strikes) {
+      setStrikes(document.getElementById("whiteStrikes"), data.strikes.white);
+      setStrikes(document.getElementById("blackStrikes"), data.strikes.black);
+    }
+    if (data.captured) {
+      setCaptured(document.getElementById("whiteCaptured"), data.captured.white);
+      setCaptured(document.getElementById("blackCaptured"), data.captured.black);
+    }
+    if (data.status) {
+      const kind = /checkmate|wins|forfeit/i.test(data.status) ? "good"
+                 : /strike|check!/i.test(data.status) ? "alert" : null;
+      setStatus(data.status, kind);
+    }
+    if (data.struck) flashStrike(data.strike_side, data.strike_reason);
+  });
+
+  socket.on("game_end", (data) => {
+    setStatus(data.status || `${data.result} — ${data.reason}`, "good");
+  });
+
+  socket.on("delay_changed", (data) => {
+    document.getElementById("delay").value = data.delay;
+    document.getElementById("delayLabel").textContent = Number(data.delay).toFixed(1) + "s";
+  });
+
+  document.getElementById("delay").addEventListener("input", (e) => {
+    const v = parseFloat(e.target.value);
+    document.getElementById("delayLabel").textContent = v.toFixed(1) + "s";
+    socket.emit("set_delay", { delay: v });
+  });
+
+  // ---- Match controls ----
+  const whiteSel = document.getElementById("whiteBot");
+  const blackSel = document.getElementById("blackBot");
+  const playBtn = document.getElementById("playBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  let running = false;
+
+  function setRunning(r) {
+    running = r;
+    playBtn.disabled = r;
+    resetBtn.disabled = r;
+    stopBtn.disabled = !r;
+    whiteSel.disabled = r;
+    blackSel.disabled = r;
+  }
+
+  async function loadBots() {
+    try {
+      const res = await fetch("/bots");
+      const { bots } = await res.json();
+      const fill = (sel, preferred) => {
+        sel.innerHTML = "";
+        bots.forEach(b => {
+          const opt = document.createElement("option");
+          opt.value = b; opt.textContent = b;
+          sel.appendChild(opt);
+        });
+        if (preferred && bots.includes(preferred)) sel.value = preferred;
+      };
+      fill(whiteSel, "random_bot.py");
+      fill(blackSel, "my_bot.py");
+    } catch (e) {
+      console.error("Failed to load bots", e);
+    }
+  }
+  loadBots();
+
+  async function postJSON(url, body) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body || {}),
+    });
+    return res.json().catch(() => ({}));
+  }
+
+  playBtn.addEventListener("click", async () => {
+    const r = await postJSON("/control/start", {
+      white: whiteSel.value, black: blackSel.value,
+    });
+    if (!r.ok) alert(r.error || "Failed to start game");
+  });
+  stopBtn.addEventListener("click", () => postJSON("/control/stop"));
+  resetBtn.addEventListener("click", async () => {
+    const r = await postJSON("/control/reset");
+    if (!r.ok) alert(r.error || "Failed to reset");
+  });
+
+  socket.on("control_state", (s) => setRunning(!!s.running));
+  // Initial state may include running too
+  const origApply = applyState;
+  socket.off("state", origApply);
+  socket.on("state", (s) => {
+    origApply(s);
+    if (s && typeof s.running === "boolean") setRunning(s.running);
+  });
+</script>
+</body>
+</html>
