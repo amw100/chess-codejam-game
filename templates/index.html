@@ -215,6 +215,14 @@
     background: linear-gradient(180deg, rgba(30, 90, 60, 0.7), rgba(14, 50, 30, 0.85));
     border-color: var(--good); color: #d8fbe8;
   }
+  .status-bar.status-pop {
+    animation: statusPop 0.34s ease-out;
+  }
+  @keyframes statusPop {
+    0% { transform: translateY(-2px) scale(0.985); }
+    60% { transform: translateY(1px) scale(1.01); }
+    100% { transform: translateY(0) scale(1); }
+  }
   @keyframes pulseAlert {
     0%, 100% { box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 0 rgba(255,107,90,0); }
     50%      { box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 22px rgba(255,107,90,0.45); }
@@ -231,6 +239,12 @@
     box-shadow:
       0 12px 30px rgba(0,0,0,0.6),
       inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  .board-frame.move-wake {
+    animation: boardWake 0.52s ease-out;
+  }
+  .board-frame.check-shudder {
+    animation: checkShudder 0.46s ease-in-out;
   }
   .board-frame::before {
     content: "";
@@ -343,6 +357,156 @@
   }
   .compass-bg svg { width: 80%; height: 80%; }
   .board-frame > #board { position: relative; z-index: 1; }
+
+  /* move animation layer */
+  .board-frame .square-55d63 {
+    position: relative;
+    transition: box-shadow 0.22s ease, filter 0.22s ease;
+  }
+  .last-move-source {
+    box-shadow: inset 0 0 0 4px rgba(240, 198, 104, 0.52) !important;
+  }
+  .last-move-target {
+    box-shadow:
+      inset 0 0 0 4px rgba(93, 223, 154, 0.72),
+      inset 0 0 22px rgba(93, 223, 154, 0.36) !important;
+    animation: squareArrival 0.62s ease-out;
+  }
+  .captured-square {
+    animation: captureHit 0.58s ease-out;
+  }
+  .animation-layer {
+    position: absolute; inset: 18px;
+    pointer-events: none; z-index: 3;
+    overflow: hidden;
+    border-radius: 4px;
+  }
+  .move-wake-line {
+    position: absolute;
+    left: 0; top: 0;
+    height: 4px;
+    width: var(--line-length, 80px);
+    transform:
+      translate(var(--line-x, 0), var(--line-y, 0))
+      rotate(var(--line-angle, 0deg))
+      scaleX(0);
+    transform-origin: 0 50%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(240,198,104,0), rgba(240,198,104,0.9), rgba(230,241,255,0));
+    box-shadow: 0 0 14px rgba(240,198,104,0.55);
+    animation: wakeLine 0.62s ease-out forwards;
+  }
+  .move-spark {
+    position: absolute;
+    left: var(--spark-x, 0);
+    top: var(--spark-y, 0);
+    width: 8px; height: 8px;
+    margin: -4px 0 0 -4px;
+    border-radius: 50%;
+    background: var(--brass-bright);
+    box-shadow: 0 0 10px var(--brass-bright);
+    transform: translate(0, 0) scale(0.4);
+    animation: sparkPop 0.56s ease-out forwards;
+  }
+  .capture-burst {
+    position: absolute;
+    left: var(--burst-x, 0);
+    top: var(--burst-y, 0);
+    width: var(--burst-size, 72px);
+    height: var(--burst-size, 72px);
+    margin:
+      calc(var(--burst-size, 72px) / -2) 0 0
+      calc(var(--burst-size, 72px) / -2);
+    border-radius: 50%;
+    border: 3px solid rgba(255, 107, 90, 0.86);
+    box-shadow:
+      0 0 22px rgba(255, 107, 90, 0.62),
+      inset 0 0 18px rgba(255, 107, 90, 0.28);
+    animation: captureBurst 0.7s ease-out forwards;
+  }
+  .check-beacon {
+    position: absolute;
+    inset: 18px;
+    border: 2px solid rgba(255, 107, 90, 0.72);
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 4;
+    box-shadow: inset 0 0 28px rgba(255, 107, 90, 0.24), 0 0 34px rgba(255, 107, 90, 0.34);
+    animation: checkBeacon 0.82s ease-out forwards;
+  }
+  .clock.turn-active {
+    animation: clockReady 1.1s ease-in-out infinite;
+  }
+  .clock.clock-tick {
+    animation: clockTick 0.32s ease-out;
+  }
+  .captured.capture-pop, .strikes.strike-pop {
+    animation: panelPop 0.4s ease-out;
+  }
+  .move-history .san.new-move {
+    animation: logSlide 0.42s ease-out;
+  }
+  @keyframes boardWake {
+    0% { transform: translateY(0); }
+    35% { transform: translateY(-2px); }
+    100% { transform: translateY(0); }
+  }
+  @keyframes checkShudder {
+    0%, 100% { transform: translateX(0); }
+    18% { transform: translateX(-4px); }
+    36% { transform: translateX(4px); }
+    54% { transform: translateX(-3px); }
+    72% { transform: translateX(2px); }
+  }
+  @keyframes squareArrival {
+    0% { filter: brightness(1.55); }
+    100% { filter: brightness(1); }
+  }
+  @keyframes captureHit {
+    0% { filter: saturate(1.7) brightness(1.45); }
+    100% { filter: saturate(1) brightness(1); }
+  }
+  @keyframes wakeLine {
+    0% { opacity: 0; transform: translate(var(--line-x, 0), var(--line-y, 0)) rotate(var(--line-angle, 0deg)) scaleX(0); }
+    35% { opacity: 1; }
+    100% { opacity: 0; transform: translate(var(--line-x, 0), var(--line-y, 0)) rotate(var(--line-angle, 0deg)) scaleX(1); }
+  }
+  @keyframes sparkPop {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.2); }
+    18% { opacity: 1; }
+    100% {
+      opacity: 0;
+      transform: translate(var(--spark-dx, 0), var(--spark-dy, 0)) scale(1);
+    }
+  }
+  @keyframes captureBurst {
+    0% { opacity: 0; transform: scale(0.28); }
+    20% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1.35); }
+  }
+  @keyframes checkBeacon {
+    0% { opacity: 0; transform: scale(0.96); }
+    18% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1.05); }
+  }
+  @keyframes clockReady {
+    0%, 100% { box-shadow: 0 0 0 rgba(240,198,104,0), inset 0 0 0 rgba(240,198,104,0); }
+    50% { box-shadow: 0 0 16px rgba(240,198,104,0.36), inset 0 0 10px rgba(240,198,104,0.12); }
+  }
+  @keyframes clockTick {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.06); }
+    100% { transform: scale(1); }
+  }
+  @keyframes panelPop {
+    0% { transform: translateY(0) scale(1); filter: brightness(1); }
+    50% { transform: translateY(-1px) scale(1.04); filter: brightness(1.35); }
+    100% { transform: translateY(0) scale(1); filter: brightness(1); }
+  }
+  @keyframes logSlide {
+    0% { opacity: 0; transform: translateX(12px); background: rgba(240,198,104,0.24); }
+    100% { opacity: 1; transform: translateX(0); background: transparent; }
+  }
 
   /* responsive */
   @media (max-width: 1100px) {
@@ -572,6 +736,7 @@
     <div class="board-frame">
       <div class="compass-bg"><svg><use href="#compass" /></svg></div>
       <div id="board"></div>
+      <div class="animation-layer" id="animationLayer" aria-hidden="true"></div>
     </div>
   </div>
 
@@ -657,10 +822,136 @@
     position: "start",
     pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
     showNotation: true,
-    moveSpeed: 250,
+    moveSpeed: 420,
     snapbackSpeed: 200,
   });
   window.addEventListener("resize", () => board.resize());
+
+  const boardEl = document.getElementById("board");
+  const boardFrame = document.querySelector(".board-frame");
+  const animationLayer = document.getElementById("animationLayer");
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let highlightedSquares = [];
+
+  function restartAnimation(el, className, duration = 500) {
+    if (!el || prefersReducedMotion) return;
+    el.classList.remove(className);
+    void el.offsetWidth;
+    el.classList.add(className);
+    window.setTimeout(() => el.classList.remove(className), duration);
+  }
+
+  function squareEl(square) {
+    return boardEl.querySelector(`[data-square="${square}"]`);
+  }
+
+  function squareCenter(square) {
+    const sq = squareEl(square);
+    if (!sq || !animationLayer) return null;
+    const r = sq.getBoundingClientRect();
+    const layer = animationLayer.getBoundingClientRect();
+    return {
+      x: r.left - layer.left + r.width / 2,
+      y: r.top - layer.top + r.height / 2,
+      size: Math.min(r.width, r.height),
+    };
+  }
+
+  function clearMoveHighlights() {
+    highlightedSquares.forEach(square => {
+      const el = squareEl(square);
+      if (el) el.classList.remove("last-move-source", "last-move-target", "captured-square");
+    });
+    highlightedSquares = [];
+  }
+
+  function clearBoardEffects() {
+    clearMoveHighlights();
+    if (animationLayer) animationLayer.innerHTML = "";
+    boardFrame.querySelectorAll(".check-beacon").forEach(el => el.remove());
+  }
+
+  function makeParticle(x, y, index) {
+    const spark = document.createElement("span");
+    spark.className = "move-spark";
+    const angle = (Math.PI * 2 * index) / 8;
+    const distance = 18 + (index % 3) * 8;
+    spark.style.setProperty("--spark-x", `${x}px`);
+    spark.style.setProperty("--spark-y", `${y}px`);
+    spark.style.setProperty("--spark-dx", `${Math.cos(angle) * distance}px`);
+    spark.style.setProperty("--spark-dy", `${Math.sin(angle) * distance}px`);
+    animationLayer.appendChild(spark);
+    window.setTimeout(() => spark.remove(), 650);
+  }
+
+  function drawWake(from, to, isCapture) {
+    if (prefersReducedMotion || !animationLayer) return;
+    const a = squareCenter(from);
+    const b = squareCenter(to);
+    if (!a || !b) return;
+
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const length = Math.hypot(dx, dy);
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    const line = document.createElement("span");
+    line.className = "move-wake-line";
+    line.style.setProperty("--line-x", `${a.x}px`);
+    line.style.setProperty("--line-y", `${a.y}px`);
+    line.style.setProperty("--line-length", `${length}px`);
+    line.style.setProperty("--line-angle", `${angle}deg`);
+    animationLayer.appendChild(line);
+    window.setTimeout(() => line.remove(), 700);
+
+    const particleCount = isCapture ? 12 : 7;
+    for (let i = 0; i < particleCount; i += 1) makeParticle(b.x, b.y, i);
+    if (isCapture) {
+      const burst = document.createElement("span");
+      burst.className = "capture-burst";
+      burst.style.setProperty("--burst-x", `${b.x}px`);
+      burst.style.setProperty("--burst-y", `${b.y}px`);
+      burst.style.setProperty("--burst-size", `${Math.max(58, b.size * 0.92)}px`);
+      animationLayer.appendChild(burst);
+      window.setTimeout(() => burst.remove(), 760);
+    }
+  }
+
+  function showCheckBeacon() {
+    if (prefersReducedMotion) return;
+    const beacon = document.createElement("div");
+    beacon.className = "check-beacon";
+    boardFrame.appendChild(beacon);
+    restartAnimation(boardFrame, "check-shudder", 520);
+    window.setTimeout(() => beacon.remove(), 900);
+  }
+
+  function animateMove(data) {
+    if (!data || !data.uci || data.uci.length < 4) return;
+    const from = data.uci.slice(0, 2);
+    const to = data.uci.slice(2, 4);
+    const isCapture = /x/.test(data.san || "");
+
+    clearMoveHighlights();
+    const fromEl = squareEl(from);
+    const toEl = squareEl(to);
+    if (fromEl) fromEl.classList.add("last-move-source");
+    if (toEl) {
+      toEl.classList.add("last-move-target");
+      if (isCapture) toEl.classList.add("captured-square");
+    }
+    highlightedSquares = [from, to];
+
+    restartAnimation(boardFrame, "move-wake", 560);
+    drawWake(from, to, isCapture);
+    if (/check/i.test(data.status || "")) showCheckBeacon();
+  }
+
+  function setTurnGlow(status) {
+    const whiteClock = document.getElementById("whiteClock");
+    const blackClock = document.getElementById("blackClock");
+    whiteClock.classList.toggle("turn-active", /\bWhite to move\b/i.test(status || ""));
+    blackClock.classList.toggle("turn-active", /\bBlack to move\b/i.test(status || ""));
+  }
 
   // Tabs
   document.querySelectorAll(".tab").forEach(t => {
@@ -678,11 +969,23 @@
     const sec = Math.floor(s % 60);
     return `${m}:${sec.toString().padStart(2, "0")}`;
   }
-  function setStrikes(el, n) { el.textContent = "⚠".repeat(n); }
-  function setCaptured(el, symbols) {
-    el.textContent = (symbols || []).map(s => PIECE_GLYPHS[s] || s).join(" ");
+  function setClock(el, seconds, animate = false) {
+    const next = fmtClock(seconds);
+    if (el.textContent !== next && animate) restartAnimation(el, "clock-tick", 360);
+    el.textContent = next;
   }
-  function appendHistory(san) {
+  function setStrikes(el, n, animate = false) {
+    const next = "⚠".repeat(n);
+    if (el.textContent !== next && animate) restartAnimation(el, "strike-pop", 450);
+    el.textContent = next;
+  }
+  function setCaptured(el, symbols, animate = false) {
+    const next = (symbols || []).map(s => PIECE_GLYPHS[s] || s).join(" ");
+    if (el.textContent !== next && animate) restartAnimation(el, "capture-pop", 450);
+    el.textContent = next;
+  }
+  function appendHistory(san, animate = true) {
+    if (!san) return;
     const hist = document.getElementById("history");
     const ply = hist.querySelectorAll(".san").length;
     if (ply % 2 === 0) {
@@ -695,6 +998,7 @@
     cell.className = "san";
     cell.textContent = san;
     hist.appendChild(cell);
+    if (animate) restartAnimation(cell, "new-move", 500);
     hist.scrollTop = hist.scrollHeight;
   }
   function clearHistory() {
@@ -706,6 +1010,8 @@
     el.classList.remove("alert", "good");
     if (kind === "alert") el.classList.add("alert");
     if (kind === "good") el.classList.add("good");
+    restartAnimation(el, "status-pop", 380);
+    setTurnGlow(text);
   }
   function flashStrike(side, reason) {
     const f = document.getElementById("strikeFlash");
@@ -722,8 +1028,8 @@
     if (s.white_name) document.getElementById("whiteName").textContent = s.white_name;
     if (s.black_name) document.getElementById("blackName").textContent = s.black_name;
     if (s.clocks) {
-      document.getElementById("whiteClock").textContent = fmtClock(s.clocks.white);
-      document.getElementById("blackClock").textContent = fmtClock(s.clocks.black);
+      setClock(document.getElementById("whiteClock"), s.clocks.white);
+      setClock(document.getElementById("blackClock"), s.clocks.black);
     }
     if (s.strikes) {
       setStrikes(document.getElementById("whiteStrikes"), s.strikes.white);
@@ -740,7 +1046,7 @@
     }
     if (s.history_san) {
       clearHistory();
-      s.history_san.forEach(appendHistory);
+      s.history_san.forEach(san => appendHistory(san, false));
     }
     if (typeof s.delay === "number") {
       document.getElementById("delay").value = s.delay;
@@ -752,23 +1058,25 @@
 
   socket.on("game_start", (s) => {
     clearHistory();
+    clearBoardEffects();
     applyState(s);
   });
 
   socket.on("move", (data) => {
     if (data.fen) board.position(data.fen);
+    animateMove(data);
     if (data.san) appendHistory(data.san);
     if (data.clocks) {
-      document.getElementById("whiteClock").textContent = fmtClock(data.clocks.white);
-      document.getElementById("blackClock").textContent = fmtClock(data.clocks.black);
+      setClock(document.getElementById("whiteClock"), data.clocks.white, true);
+      setClock(document.getElementById("blackClock"), data.clocks.black, true);
     }
     if (data.strikes) {
-      setStrikes(document.getElementById("whiteStrikes"), data.strikes.white);
-      setStrikes(document.getElementById("blackStrikes"), data.strikes.black);
+      setStrikes(document.getElementById("whiteStrikes"), data.strikes.white, true);
+      setStrikes(document.getElementById("blackStrikes"), data.strikes.black, true);
     }
     if (data.captured) {
-      setCaptured(document.getElementById("whiteCaptured"), data.captured.white);
-      setCaptured(document.getElementById("blackCaptured"), data.captured.black);
+      setCaptured(document.getElementById("whiteCaptured"), data.captured.white, true);
+      setCaptured(document.getElementById("blackCaptured"), data.captured.black, true);
     }
     if (data.status) {
       const kind = /checkmate|wins|forfeit/i.test(data.status) ? "good"
@@ -854,6 +1162,7 @@
 
   socket.on("control_state", (s) => setRunning(!!s.running));
   socket.on("state", (s) => {
+    if (s && Array.isArray(s.history_san) && s.history_san.length === 0) clearBoardEffects();
     applyState(s);
     if (s && typeof s.running === "boolean") setRunning(s.running);
   });
