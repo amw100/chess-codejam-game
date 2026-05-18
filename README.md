@@ -37,6 +37,14 @@ def make_move(board: chess.Board) -> chess.Move:
 
 That's it. Return a legal `chess.Move`. No game loop, no UI, no networking.
 
+## Submitting your bot
+
+To enter your bot in the tournament, **open a pull request** containing a single new file under `bots/` with a **creative name of your choosing** — e.g. `bots/captain_kraken.py`, `bots/seasick_knight.py`. The filename is what shows up on the spectator screen and in the bracket, so pick something that earns you cheers.
+
+- One file per team, in `bots/`, ending in `.py`.
+- Must define `make_move(board) -> chess.Move`.
+- Don't modify any other file in the repo.
+
 ## Rules
 
 - **Time control:** Fischer — each side starts with **2 minutes** and gains **+1 second** after every successful move. A bot may spend up to its entire remaining clock on a single move.
