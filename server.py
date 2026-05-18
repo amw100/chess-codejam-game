@@ -37,12 +37,13 @@ def _default_state():
         "history_san": [],
         "last_move": None,
         "strikes": {"white": 0, "black": 0},
-        "clocks": {"white": 600.0, "black": 600.0},
+        "clocks": {"white": 120.0, "black": 120.0},
         "captured": {"white": [], "black": []},
         "status": "Waiting for game…",
         "delay": 1.0,
         "game_over": False,
         "running": False,
+        "turn": "white",
     }
 
 
@@ -78,10 +79,11 @@ def _handle_game_start(data):
         "history_san": [],
         "last_move": None,
         "strikes": {"white": 0, "black": 0},
-        "clocks": data.get("clocks", {"white": 600.0, "black": 600.0}),
+        "clocks": data.get("clocks", {"white": 120.0, "black": 120.0}),
         "captured": {"white": [], "black": []},
         "status": "White to move",
         "game_over": False,
+        "turn": data.get("turn", "white"),
     })
     socketio.emit("game_start", state)
 
@@ -100,6 +102,8 @@ def _handle_move(data):
         state["captured"] = data["captured"]
     if "status" in data:
         state["status"] = data["status"]
+    if "turn" in data:
+        state["turn"] = data["turn"]
     socketio.emit("move", data)
 
 
