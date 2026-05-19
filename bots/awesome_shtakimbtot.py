@@ -172,7 +172,7 @@ def _estimated_remaining() -> float:
 def _move_budget() -> float:
     remaining = _estimated_remaining()
     # Spend at most remaining/25 or 2 s, whichever is less
-    return min(2.0, remaining / 25.0)
+    return min(3.0, remaining / 25.0)
 
 
 # ── Evaluation ────────────────────────────────────────────────────────────────
