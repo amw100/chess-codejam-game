@@ -7,7 +7,8 @@ WHITE, BLACK = True, False
 INF = 1_000_000_000
 MATE = 100_000
 MAX_PLY = 128
-TT_LIMIT = 350_000
+TT_LIMIT = 450_000
+EVAL_LIMIT = 220_000
 
 MG_VALUE = (0, 100, 320, 335, 500, 930, 0)
 EG_VALUE = (0, 120, 305, 335, 510, 930, 0)
@@ -18,6 +19,7 @@ PROMOTION_BONUS = (0, 0, 280, 290, 470, 850, 0)
 EXACT, LOWER, UPPER = 0, 1, 2
 
 _TT = {}
+_EVAL_TT = {}
 _KILLERS = [[None, None] for _ in range(MAX_PLY)]
 _HISTORY = {}
 _SPENT = {WHITE: 0.0, BLACK: 0.0}
@@ -27,9 +29,9 @@ _NODES = 0
 _START_BOARD = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 
 _BOOK = {
-    (): ("e2e4", "d2d4", "g1f3"),
-    ("e2e4",): ("c7c5", "e7e5", "e7e6"),
-    ("d2d4",): ("g8f6", "d7d5"),
+    (): ("d2d4", "e2e4", "g1f3"),
+    ("e2e4",): ("c7c5", "e7e6", "e7e5"),
+    ("d2d4",): ("g8f6", "d7d5", "e7e6"),
     ("g1f3",): ("d7d5", "g8f6"),
     ("c2c4",): ("g8f6", "e7e5"),
     ("e2e4", "e7e5"): ("g1f3",),
@@ -41,13 +43,23 @@ _BOOK = {
     ("d2d4", "g8f6"): ("c2c4",),
     ("d2d4", "d7d5"): ("c2c4",),
     ("e2e4", "e7e5", "g1f3"): ("b8c6", "g8f6"),
-    ("e2e4", "c7c5", "g1f3"): ("d7d6", "b8c6"),
+    ("e2e4", "c7c5", "g1f3"): ("b8c6", "d7d6"),
     ("d2d4", "g8f6", "c2c4"): ("e7e6", "g7g6"),
     ("d2d4", "d7d5", "c2c4"): ("e7e6", "c7c6"),
     ("e2e4", "e7e5", "g1f3", "b8c6"): ("f1b5",),
     ("e2e4", "e7e5", "g1f3", "g8f6"): ("f3e5",),
     ("e2e4", "c7c5", "g1f3", "d7d6"): ("d2d4",),
     ("e2e4", "c7c5", "g1f3", "b8c6"): ("d2d4",),
+    ("d2d4", "g8f6", "c2c4", "e7e6"): ("g1f3", "g2g3"),
+    ("d2d4", "g8f6", "c2c4", "g7g6"): ("b1c3", "g1f3"),
+    ("d2d4", "d7d5", "c2c4", "e7e6"): ("g1f3", "b1c3"),
+    ("d2d4", "d7d5", "c2c4", "c7c6"): ("g1f3", "b1c3"),
+    ("d2d4", "g8f6", "c2c4", "e7e6", "g1f3"): ("d7d5", "f8b4"),
+    ("e2e4", "c7c5", "g1f3", "b8c6", "d2d4"): ("c5d4",),
+    ("e2e4", "c7c5", "g1f3", "b8c6", "d2d4", "c5d4"): ("f3d4",),
+    ("e2e4", "c7c5", "g1f3", "b8c6", "d2d4", "c5d4", "f3d4"): ("e7e6", "d7d6"),
+    ("e2e4", "c7c5", "g1f3", "b8c6", "d2d4", "c5d4", "f3d4", "e7e6", "b1c3"): ("g8f6",),
+    ("e2e4", "e7e6", "d2d4"): ("d7d5",),
 }
 
 
@@ -268,6 +280,8 @@ def make_move(board):
         _record_time(color, start)
         if len(_TT) > TT_LIMIT:
             _TT.clear()
+        if len(_EVAL_TT) > EVAL_LIMIT:
+            _EVAL_TT.clear()
 
 
 def _record_time(color, start):
@@ -288,25 +302,25 @@ def _time_budget(board, legal_count):
         return min(0.80, max(0.18, remaining * 0.05))
 
     if own_moves < 8:
-        target = 0.70
+        target = 0.80
     elif own_moves < 35:
-        target = 1.15
+        target = 1.35
     else:
-        target = 0.90
+        target = 1.05
 
-    target += min(0.55, legal_count * 0.012)
+    target += min(0.70, legal_count * 0.014)
     if board.is_check():
-        target += 0.20
+        target += 0.28
     if legal_count <= 10:
-        target += 0.20
+        target += 0.25
 
-    reserve = 7.0
-    cap = max(0.05, (remaining - reserve) * 0.075)
-    return min(target, cap, 1.85)
+    reserve = 8.0
+    cap = max(0.05, (remaining - reserve) * 0.085)
+    return min(target, cap, 2.35)
 
 
 def _book_move(board, legal):
-    if len(board.move_stack) > 6:
+    if len(board.move_stack) > 10:
         return None
     if not board.move_stack and board.board_fen() != _START_BOARD:
         return None
@@ -386,6 +400,8 @@ def _search(board, depth, alpha, beta, ply):
 
     if board.halfmove_clock >= 100 or board.is_insufficient_material():
         return 0
+    if ply > 0 and board.is_repetition(2):
+        return 0
 
     in_check = board.is_check()
     if depth <= 0 and not in_check:
@@ -413,14 +429,40 @@ def _search(board, depth, alpha, beta, ply):
     if not legal:
         return -MATE + ply if in_check else 0
 
+    if (
+        depth >= 3
+        and ply > 0
+        and not in_check
+        and len(legal) > 1
+        and _has_non_pawn_material(board, board.turn)
+    ):
+        static_score = _evaluate(board)
+        if static_score >= beta - 70:
+            reduction = 2 + (1 if depth >= 5 else 0)
+            board.push(type(legal[0]).null())
+            try:
+                score = -_search(board, depth - 1 - reduction, -beta, -beta + 1, ply + 1)
+            finally:
+                board.pop()
+            if score >= beta:
+                return beta
+
     legal.sort(key=lambda move: _move_score(board, move, tt_move, ply), reverse=True)
 
     original_alpha = alpha
     best_score = -INF
     best_move = legal[0]
+    static_score = None
 
     for index, move in enumerate(legal):
         quiet = not _is_tactical(board, move)
+        if quiet and depth <= 2 and not in_check and index >= 5:
+            if static_score is None:
+                static_score = _evaluate(board)
+            margin = 105 if depth == 1 else 235
+            if static_score + margin <= alpha and not board.gives_check(move):
+                continue
+
         board.push(move)
         try:
             gives_check = board.is_check()
@@ -489,14 +531,15 @@ def _quiescence(board, alpha, beta, ply):
 
     moves = []
     for move in board.legal_moves:
-        if board.is_capture(move) or move.promotion:
+        if board.is_capture(move) or move.promotion or (ply < 4 and board.gives_check(move)):
             moves.append(move)
 
-    moves.sort(key=lambda move: _capture_score(board, move), reverse=True)
+    moves.sort(key=lambda move: _move_score(board, move, None, ply), reverse=True)
 
     for move in moves:
-        swing = _capture_value(board, move)
-        if not move.promotion and stand_pat + swing + 160 < alpha:
+        tactical = board.is_capture(move) or move.promotion
+        swing = _capture_value(board, move) if tactical else 0
+        if tactical and not move.promotion and stand_pat + swing + 160 < alpha:
             continue
         board.push(move)
         try:
@@ -514,6 +557,10 @@ def _quiescence(board, alpha, beta, ply):
 def _evaluate(board):
     if board.is_insufficient_material():
         return 0
+    key = board._transposition_key()
+    cached = _EVAL_TT.get(key)
+    if cached is not None:
+        return cached
 
     mg = 0
     eg = 0
@@ -523,6 +570,7 @@ def _evaluate(board):
     pawn_ranks = [[0] * 8, [0] * 8]
     pawns = []
     rooks = []
+    pieces = []
     kings = [None, None]
 
     for square, piece in board.piece_map().items():
@@ -530,6 +578,7 @@ def _evaluate(board):
         piece_type = piece.piece_type
         sign = 1 if color == WHITE else -1
         view_square = square if color == WHITE else square ^ 56
+        pieces.append((square, piece_type, color))
 
         mg += sign * (MG_VALUE[piece_type] + MG_TABLES[piece_type][view_square])
         eg += sign * (EG_VALUE[piece_type] + EG_TABLES[piece_type][view_square])
@@ -606,14 +655,22 @@ def _evaluate(board):
             mg += sign * 12
             eg += sign * 8
 
+    safety = _piece_safety_score(board, pieces)
+    mg += safety
+    eg += safety // 2
+
     if phase > 8:
         mg += _king_safety_score(WHITE, kings[WHITE], pawn_files, pawn_ranks)
         mg -= _king_safety_score(BLACK, kings[BLACK], pawn_files, pawn_ranks)
+        mg += _castling_score(board, WHITE, kings[WHITE])
+        mg -= _castling_score(board, BLACK, kings[BLACK])
 
     phase = min(24, phase)
     score = (mg * phase + eg * (24 - phase)) // 24
     score += 8 if board.turn == WHITE else -8
-    return score if board.turn == WHITE else -score
+    score = score if board.turn == WHITE else -score
+    _EVAL_TT[key] = score
+    return score
 
 
 def _king_safety_score(color, king_square, pawn_files, pawn_ranks):
@@ -640,6 +697,75 @@ def _king_safety_score(color, king_square, pawn_files, pawn_ranks):
     if king_square in CENTER:
         score -= 28
     return score
+
+
+def _castling_score(board, color, king_square):
+    if king_square is None:
+        return 0
+    if color == WHITE:
+        if king_square in (2, 6):
+            return 34
+        home = 4
+    else:
+        if king_square in (58, 62):
+            return 34
+        home = 60
+
+    can_castle = (
+        board.has_kingside_castling_rights(color)
+        or board.has_queenside_castling_rights(color)
+    )
+    if king_square == home:
+        return 8 if can_castle else -26
+    return -10 if can_castle else 0
+
+
+def _piece_safety_score(board, pieces):
+    score = 0
+    for square, piece_type, color in pieces:
+        if piece_type == KING:
+            continue
+        enemy_attackers = board.attackers_mask(not color, square)
+        if not enemy_attackers:
+            continue
+
+        value = MG_VALUE[piece_type]
+        defenders = board.attackers_mask(color, square)
+        penalty = value // 18
+        if defenders == 0:
+            penalty += value // 9
+        elif _least_attacker_value(board, enemy_attackers) + 40 < value:
+            penalty += value // 16
+
+        if piece_type == PAWN:
+            penalty = min(penalty, 18)
+        elif piece_type == QUEEN:
+            penalty = min(penalty, 145)
+
+        score += -penalty if color == WHITE else penalty
+    return score
+
+
+def _least_attacker_value(board, attackers):
+    best = INF
+    mask = attackers
+    while mask:
+        bit = mask & -mask
+        square = bit.bit_length() - 1
+        piece = board.piece_at(square)
+        if piece is not None:
+            value = MG_VALUE[piece.piece_type]
+            if value < best:
+                best = value
+        mask ^= bit
+    return best if best != INF else 0
+
+
+def _has_non_pawn_material(board, color):
+    for piece_type in (KNIGHT, BISHOP, ROOK, QUEEN):
+        if board.pieces_mask(piece_type, color):
+            return True
+    return False
 
 
 def _adjacent_pawns(files, file_index):
@@ -711,6 +837,8 @@ def _quick_move_score(board, move):
         score += 1_000_000 + _capture_score(board, move)
     if move.promotion:
         score += 900_000 + PROMOTION_BONUS[move.promotion]
+    if board.gives_check(move):
+        score += 65_000
     if moving is not None:
         piece_type = moving.piece_type
         color = moving.color
