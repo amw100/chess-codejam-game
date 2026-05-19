@@ -3,9 +3,10 @@
 Each bot exposes `make_move(board) -> chess.Move`. The runner:
   * loads each bot from a file path
   * alternates turns, passing `board.copy()` so bots can't mutate state
-  * enforces a 3-second per-move limit (threading.Timer-style, cross-platform)
-  * applies a 3-strike system (exception or timeout -> random legal move)
-  * enforces a 10-minute per-side clock; on flag-fall, adjudicate by material
+  * enforces a Fischer time control (120s base + 1s increment per move);
+    a bot may spend up to its entire remaining clock on a single move
+  * applies a 3-strike system (exception or illegal move -> random legal move)
+  * flag fall (clock <= 0) ends the game; that side loses
   * streams events to the spectator server over Socket.IO
   * writes the completed game to games/<timestamp>.pgn
 """
@@ -26,8 +27,12 @@ import chess
 import chess.pgn
 
 
-PER_MOVE_LIMIT = 3.0
-PER_SIDE_CLOCK = 600.0  # 10 minutes
+# Fischer time control: each side starts with BASE_TIME and gains INCREMENT
+# after every successful move. Running out of time = immediate loss (flag fall).
+# No flat per-move cap — a bot can spend its entire remaining clock on one move
+# if it wants to. This forces real time-management strategy.
+BASE_TIME = 120.0
+INCREMENT = 1.0
 MAX_STRIKES = 3
 
 PIECE_VALUES = {
@@ -212,7 +217,7 @@ def run_game(white_path, black_path, delay, no_viz):
     viz = VizClient(enabled=not no_viz)
     viz.push_delay(delay)
 
-    clocks = {"white": PER_SIDE_CLOCK, "black": PER_SIDE_CLOCK}
+    clocks = {"white": BASE_TIME, "black": BASE_TIME}
     strikes = {"white": 0, "black": 0}
 
     viz.emit("game_start", {
@@ -220,34 +225,47 @@ def run_game(white_path, black_path, delay, no_viz):
         "white_name": white_name,
         "black_name": black_name,
         "clocks": clocks,
+        "turn": "white",
     })
 
     forfeit_side = None  # "white" or "black" if a 3rd strike happens
-    flag_fall = False
+    flag_fall_side = None  # "white" or "black" if a clock hits zero
 
     while not board.is_game_over(claim_draw=True):
         side_key = "white" if board.turn == chess.WHITE else "black"
         bot = white_bot if board.turn == chess.WHITE else black_bot
 
-        # Cap the per-move limit at remaining clock for this side
         remaining = clocks[side_key]
         if remaining <= 0:
-            flag_fall = True
+            flag_fall_side = side_key
             break
-        timeout = min(PER_MOVE_LIMIT, remaining)
 
+        # Fischer: bot may spend up to its entire remaining clock on one move.
+        # If it does, the clock hits zero and that's flag fall.
         move, exc, timed_out, elapsed = call_with_timeout(
-            bot.make_move, board.copy(), timeout
+            bot.make_move, board.copy(), remaining
         )
 
         clocks[side_key] = max(0.0, clocks[side_key] - elapsed)
 
+        if timed_out or clocks[side_key] <= 0:
+            flag_fall_side = side_key
+            clocks[side_key] = 0.0
+            viz.emit("move", {
+                "fen": board.fen(),
+                "uci": None,
+                "san": None,
+                "strikes": strikes,
+                "clocks": clocks,
+                "captured": captured_pieces(board),
+                "status": f"Flag fall — {side_key} ran out of time",
+                "turn": side_key,
+            })
+            break
+
         struck = False
         strike_reason = None
-        if timed_out:
-            struck = True
-            strike_reason = f"timeout (>{PER_MOVE_LIMIT:.0f}s)"
-        elif exc is not None:
+        if exc is not None:
             struck = True
             strike_reason = f"exception: {type(exc).__name__}: {exc}"
             print(f"[strike] {side_key} bot raised:")
@@ -278,6 +296,11 @@ def run_game(white_path, black_path, delay, no_viz):
                 break
             move = random.choice(list(board.legal_moves))
 
+        # Fischer increment: only awarded on a successful (non-strike) move.
+        # A strike already consumed time and plays a random move — no bonus.
+        if not struck:
+            clocks[side_key] += INCREMENT
+
         # Apply the move
         san = board.san(move)
         board.push(move)
@@ -306,6 +329,7 @@ def run_game(white_path, black_path, delay, no_viz):
             "struck": struck,
             "strike_side": side_key if struck else None,
             "strike_reason": strike_reason if struck else None,
+            "turn": "white" if board.turn == chess.WHITE else "black",
         })
 
         print(f"{san:8s}  strikes W:{strikes['white']} B:{strikes['black']}  "
@@ -326,18 +350,13 @@ def run_game(white_path, black_path, delay, no_viz):
         else:
             result_str = "1-0"
             end_reason = "Black forfeit (3 strikes)"
-    elif flag_fall:
-        white_mat = material_value(board, chess.WHITE)
-        black_mat = material_value(board, chess.BLACK)
-        if white_mat > black_mat:
-            result_str = "1-0"
-            end_reason = f"Time-out adjudication: White {white_mat} > Black {black_mat}"
-        elif black_mat > white_mat:
+    elif flag_fall_side is not None:
+        if flag_fall_side == "white":
             result_str = "0-1"
-            end_reason = f"Time-out adjudication: Black {black_mat} > White {white_mat}"
+            end_reason = "White flag fall — out of time"
         else:
-            result_str = "1/2-1/2"
-            end_reason = f"Time-out adjudication: equal material ({white_mat})"
+            result_str = "1-0"
+            end_reason = "Black flag fall — out of time"
     else:
         outcome = board.outcome(claim_draw=True)
         if outcome is None:

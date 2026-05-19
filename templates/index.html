@@ -692,7 +692,7 @@
           <span id="blackName">Black</span>
           <span class="rank">Commander</span>
         </span>
-        <span class="clock" id="blackClock">10:00</span>
+        <span class="clock" id="blackClock">2:00</span>
       </div>
       <div class="label-row"><span>Strikes ⚠</span><span>🥜 Nuts Collected</span></div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -708,7 +708,7 @@
           <span id="whiteName">White</span>
           <span class="rank">Commander</span>
         </span>
-        <span class="clock" id="whiteClock">10:00</span>
+        <span class="clock" id="whiteClock">2:00</span>
       </div>
       <div class="label-row"><span>Strikes ⚠</span><span>🥜 Nuts Collected</span></div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -759,7 +759,7 @@
         <h3><span class="icon">🧭</span> Standing Orders</h3>
         <ul style="margin:0;padding-left:18px;line-height:1.7;font-size:13px;color:var(--foam);">
           <li>3 strikes &mdash; ye walk the plank. 🥜</li>
-          <li>3 seconds per move. The tide (and the squirrels) wait for no bot.</li>
+          <li>Fischer time: 2 minutes per captain, +1 second after each move. Run out and ye sink.</li>
           <li>Adjust the <em>tide</em> slider to slow the action for the peanut gallery.</li>
           <li>Strikes are awarded for crashes, timeouts, and being generally <em>nuts</em>.</li>
           <li>Captains may not import contraband (<code>numpy</code>, <code>requests</code>, salted snacks).</li>
@@ -969,6 +969,63 @@
     const sec = Math.floor(s % 60);
     return `${m}:${sec.toString().padStart(2, "0")}`;
   }
+
+  // Client-side clock ticking. The server sends authoritative clocks on each
+  // move; between moves we tick the active side locally so spectators see
+  // the clock drain in real time as a bot thinks.
+  const clockState = {
+    base: { white: 120, black: 120 },  // last server-known clocks (seconds)
+    turn: null,                         // "white" | "black" | null (null = paused)
+    startedAt: 0,                       // performance.now() when this turn began
+    gameOver: true,                     // start paused; flipped false on game_start
+  };
+
+  let pendingTurnTimer = null;
+
+  function syncClocks(clocks, turn, switchDelayMs = 0) {
+    if (clocks) {
+      if (typeof clocks.white === "number") clockState.base.white = clocks.white;
+      if (typeof clocks.black === "number") clockState.base.black = clocks.black;
+    }
+    if (pendingTurnTimer !== null) {
+      clearTimeout(pendingTurnTimer);
+      pendingTurnTimer = null;
+    }
+    if (turn === "white" || turn === "black") {
+      // Pause ticking until the runner actually starts the new turn (after
+      // its visual-pacing sleep). Otherwise the clock would drain `delay`
+      // seconds too early.
+      clockState.turn = null;
+      const startTurn = () => {
+        clockState.turn = turn;
+        clockState.startedAt = performance.now();
+        pendingTurnTimer = null;
+      };
+      if (switchDelayMs > 0) {
+        pendingTurnTimer = setTimeout(startTurn, switchDelayMs);
+      } else {
+        startTurn();
+      }
+    } else if (turn === null) {
+      clockState.turn = null;
+    }
+  }
+
+  function tickClocks() {
+    if (clockState.gameOver) return;
+    const wEl = document.getElementById("whiteClock");
+    const bEl = document.getElementById("blackClock");
+    let w = clockState.base.white;
+    let b = clockState.base.black;
+    if (clockState.turn) {
+      const elapsed = (performance.now() - clockState.startedAt) / 1000;
+      if (clockState.turn === "white") w = Math.max(0, w - elapsed);
+      else b = Math.max(0, b - elapsed);
+    }
+    if (wEl) wEl.textContent = fmtClock(w);
+    if (bEl) bEl.textContent = fmtClock(b);
+  }
+  setInterval(tickClocks, 100);
   function setClock(el, seconds, animate = false) {
     const next = fmtClock(seconds);
     if (el.textContent !== next && animate) restartAnimation(el, "clock-tick", 360);
@@ -1028,8 +1085,11 @@
     if (s.white_name) document.getElementById("whiteName").textContent = s.white_name;
     if (s.black_name) document.getElementById("blackName").textContent = s.black_name;
     if (s.clocks) {
+      syncClocks(s.clocks, s.turn);
       setClock(document.getElementById("whiteClock"), s.clocks.white);
       setClock(document.getElementById("blackClock"), s.clocks.black);
+    } else if (s.turn) {
+      syncClocks(null, s.turn);
     }
     if (s.strikes) {
       setStrikes(document.getElementById("whiteStrikes"), s.strikes.white);
@@ -1052,6 +1112,11 @@
       document.getElementById("delay").value = s.delay;
       document.getElementById("delayLabel").textContent = s.delay.toFixed(1) + "s";
     }
+    // Tick only while a game is actively running.
+    if (typeof s.running === "boolean" || typeof s.game_over === "boolean") {
+      clockState.gameOver = !s.running || !!s.game_over;
+      if (clockState.gameOver) clockState.turn = null;
+    }
   }
 
   const socket = io();
@@ -1059,6 +1124,7 @@
   socket.on("game_start", (s) => {
     clearHistory();
     clearBoardEffects();
+    clockState.gameOver = false;
     applyState(s);
   });
 
@@ -1066,9 +1132,13 @@
     if (data.fen) board.position(data.fen);
     animateMove(data);
     if (data.san) appendHistory(data.san);
+    const pacingMs = (parseFloat(document.getElementById("delay").value) || 0) * 1000;
     if (data.clocks) {
+      syncClocks(data.clocks, data.turn, pacingMs);
       setClock(document.getElementById("whiteClock"), data.clocks.white, true);
       setClock(document.getElementById("blackClock"), data.clocks.black, true);
+    } else if (data.turn) {
+      syncClocks(null, data.turn, pacingMs);
     }
     if (data.strikes) {
       setStrikes(document.getElementById("whiteStrikes"), data.strikes.white, true);
@@ -1088,6 +1158,9 @@
 
   socket.on("game_end", (data) => {
     setStatus(data.status || `${data.result} — ${data.reason}`, "good");
+    clockState.gameOver = true;
+    clockState.turn = null;
+    if (data.clocks) syncClocks(data.clocks, null);
   });
 
   socket.on("delay_changed", (data) => {
